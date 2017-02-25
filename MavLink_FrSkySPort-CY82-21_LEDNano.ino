@@ -144,9 +144,9 @@ enum GPS_Status {
  * *******************************************************
  */
 #define debugSerial         btSerial
-//#define debugSerialBaud     57600
+#define debugSerialBaud     38400
 #define _MavLinkSerial      Serial
-#define _MavLinkSerialBaud  57600
+#define _MavLinkSerialBaud  57600  // debe ser 57600
 #define START               1
 #define MSG_RATE            10      // Hertz
 #define AP_SYSID            1       // autopilot system id
@@ -162,8 +162,8 @@ enum GPS_Status {
 
 // serial comm para Bluetooth
 #include <SoftwareSerial.h>
-SoftwareSerial btSerial(11,8); // RX, TX
-//#define DPN Serial.println //imprime en el puerto del usb, es tambien el de telemetria
+SoftwareSerial btSerial(11,14); // RX, TX
+#define DPN Serial.println //imprime en el puerto del usb, es tambien el de telemetria
 #define DPL btSerial.println // imprime en el puerto para monitorear 
     
  // initialize the serial communication:
@@ -439,11 +439,14 @@ bool          telemetry_initialized =     0;  // Is FrSkySPort Telemetry initial
  * *******************************************************
  */
 void setup()  {
-
+	// define pin modes for tx, rx:  for software serial, not sure if needed
+	//pinMode(11, INPUT);
+	//pinMode(7, OUTPUT);
 
   // bluetooth serial
-  btSerial.begin(38400);// ahora lo uso para monitor
+	debugSerial.begin(debugSerialBaud);
   DPL(F("Mav2led monitor"));  
+  
 
   
    pinMode (hbLed, OUTPUT); // salida de hbled uso el A3 Pcint 11 pues el 13 es SCK
@@ -452,6 +455,8 @@ void setup()  {
   #endif
 
   Mavlink_setup();           // Init Mavlink
+  DPN(F("MAv2led monitor Nano"));
+
   LedInit(frontled);         // front led gnk init
   LedInit(backled);
   LedInit(motorsLedLeft);		// motors left Led
@@ -459,6 +464,8 @@ void setup()  {
   LedInit(GpsLed);		// motors right leds
 
  
+  DPL(F("Fin de Setup"));
+  DPN(F("Fin de Setup"));
           
 }
 
@@ -478,8 +485,8 @@ void loop()  {
 
   if ( MavLink_Connected == 1 ) {           // If we have a valid MavLink Connection
 	  //if ((mavlink_active)) digitalWrite(hbLed, ioCounter == 1 ? HIGH : LOW); 
-    leds[1]=(((millis() % 250) >= 200) ? CRGB ::White : 0); // El led uno titila si mavlink_activo
-    
+    leds[1]=(((millis() % 250) >= 200) ? CRGB ::White : 0); // El led uno titila si mavlink_activo era led 1
+	vled_draw();
       Teensy_LED_process();                 // Process LED-Controller
   
   }
@@ -492,8 +499,9 @@ void loop()  {
   
   FrontFlash(64, 255);  //  hace titilar el led flash de frente GNK cambiar 255 por dim
  // EVERY_N_MILLISECONDS(500) {digitalWrite(hbLed,!digitalRead(hbLed));  } //Blink(boolean LedActivo,byte LedPin , uint8_t Ton)
+  //EVERY_N_MILLISECONDS(100) { DPL("."); }  // debug
   
-  digitalWrite( hbLed ,((millis() % 500) >= 100)) ; // una formA DE  generar onda rectangula de cualquier % ciclo - en este caso aplicado al led sobre el arduino
+  digitalWrite( hbLed ,((millis() % 1000) >= 50)) ; // una formA DE  generar onda rectangula de cualquier % ciclo - en este caso aplicado al led sobre el arduino
   //GenericFlash(uint8_t pin, uint8_t pw, uint8_t offset, int BPM, float dim) 
   GenericFlash(backled, 32, 160, 60, 256); // flash del led  trasero
   //GenericFlash(13, 50, 160, 60, 200); // flash de mavlink para pruebas , normalmente debe parpadear cuando se establece la coneccion

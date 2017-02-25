@@ -121,7 +121,7 @@ int LED_DIMM_CHAN;
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void(*SimplePatternList[])();
-SimplePatternList gPatterns = { applause,sinelon, bpm };
+SimplePatternList gPatterns = { applause,sinelon, bpm, sinelon2 };
 
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
@@ -466,7 +466,8 @@ void  Teensy_LED_process() {   // comment in SIMULATION_MODE ( DEJAR NORMAL)
   }
    //ThrotleLed (int brazo , int posicion, int LedsNum, int hue, float dim  )
    //ThrotleLed (0, 2, 13, 200,  dim  );
-    
+
+  update_copter_leds();// update motors and gps leds
   FastLED.show();
   lastmillis = currentmillis;
 }
@@ -938,14 +939,7 @@ void flash_pos_light(int STATUS, float dim) {
 
   // An animation to play while the crowd goes wild after the big performance
 void applause()
-{/*
-  static uint16_t lastPixel = 0;
-  fadeToBlackBy( Vir_led, NUM_LEDS, 32);
-  Vir_led[lastPixel] = CHSV(random8(HUE_BLUE,HUE_PURPLE),255,255);
-  lastPixel = random16(NUM_LEDS);
-  Vir_led[lastPixel] = CRGB::White;
-  vled_draw(); // draw from virtual to fisical leds
-  */
+{
   static uint16_t lastPixel = 0;
   fadeToBlackBy( leds, NUM_LEDS, 32);
   leds[lastPixel] = CHSV(random8(HUE_BLUE,HUE_PURPLE),255,255);
@@ -961,7 +955,6 @@ void sinelon()
   //fadeToBlackBy(Vir_led, NUM_LEDS, 60);
   fadeToBlackBy(leds, NUM_LEDS, 60);
   int pos = beatsin16(13, 0, NUM_LEDS);
-  //Vir_led[pos] += CHSV(gHue, 255, 192);
   leds[pos] += CHSV(gHue, 255, 192);
   vled_draw(); // draw from virtual to fisical leds
 }
@@ -973,7 +966,7 @@ void bpm()
   CRGBPalette16 palette = PartyColors_p;
   uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
   for (int i = 0; i < NUM_LEDS; i++) { //9948
-    //Vir_led[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
+    
     leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
   }
   vled_draw(); // draw from virtual to fisical leds
@@ -984,25 +977,23 @@ void bpm()
 
 
 // Updated sinelon (no visual gaps)
-
-/*
 void sinelon2()
 {
   // a colored dot sweeping 
   // back and forth, with 
   // fading trails
-  fadeToBlackBy(Vir_led, NUM_LEDS, 20);
+  fadeToBlackBy(leds, NUM_LEDS, 20);
   int pos = beatsin16(13, 0, NUM_LEDS);
   static int prevpos = 0;
   if (pos < prevpos) {
-    fill_solid(Vir_led + pos, (prevpos - pos) + 1, CHSV(gHue, 220, 255));
+    fill_solid(leds + pos, (prevpos - pos) + 1, CHSV(gHue, 220, 255));
   }
   else {
-    fill_solid(Vir_led + prevpos, (pos - prevpos) + 1, CHSV(gHue, 220, 255));
+    fill_solid(leds + prevpos, (pos - prevpos) + 1, CHSV(gHue, 220, 255));
   }
   prevpos = pos;
   vled_draw(); // draw from virtual to fisical leds
-}*/
+}
 
 
 
@@ -1080,7 +1071,9 @@ void Leds_Test(void) {
 
 // motor leds control . GPS and Motors status analog leds
 static void update_copter_leds(void) {
-	if (motorsArmed()) {
+	//DPL(motorsArmed()); //debug+
+
+	if  (motorsArmed()) { //if (motorsArmed()) {
 		if (ap_voltage_battery < minimum_battery_volts) {
 
 			copter_leds_oscillate();                        //if motors are armed, but battery level is low, motor leds fast blink
@@ -1093,15 +1086,17 @@ static void update_copter_leds(void) {
 	else {
 		copter_leds_slow_blink();                               //if motors are not armed, blink motor leds
 	}
+	//DPL(ap_fixtype); //debug+
 
-	if (1 == NO_GPS) {
+	if (ap_fixtype == NO_GPS) {
 		digitalWrite(GpsLed, OFF);
+		
 	}
-	else {if (1 == NO_FIX) {
+	else {if (ap_fixtype == NO_FIX) {
 			GenericFlash(GpsLed, 32, 0, 120, 255);}
 		else
 		{
-			if (1 >= GPS_OK_FIX_3D) { digitalWrite(GpsLed, ON);}
+			if (ap_fixtype >= GPS_OK_FIX_3D) { digitalWrite(GpsLed, ON);}
 		}
 	}
 	}
@@ -1109,9 +1104,9 @@ static void update_copter_leds(void) {
 
 	// Detects if motors are armed 
 	bool  motorsArmed(void) {
-		return (ap_system_status & MAV_STATE_ACTIVE);
+		return (ap_system_status & MAV_STATE_ACTIVE) ; // debug ojo
 	}
-
+	
 
 	void copter_leds_oscillate(void ){
 		//void GenericFlash(uint8_t pin, uint8_t pw, uint8_t offset, int BPM, uint8_t dim) 
@@ -1129,8 +1124,11 @@ static void update_copter_leds(void) {
 
 	}                            //if motors are armed, battery level OK, all motor leds ON	
 	void copter_leds_slow_blink(void) {
-		GenericFlash(motorsLedLeft, 32, 0, 16, 255);
-		GenericFlash(motorsLedRight, 32, 0, 16, 255);
+		//GenericFlash(motorsLedLeft, 32, 0, 16, 255);
+		//GenericFlash(motorsLedRight, 32, 0, 16, 255);
+		analogWrite(motorsLedLeft, beat8(16, 0));
+		analogWrite(motorsLedRight, beat8(16, 0));
+		// beat8 (accum88 beats_per_minute, uint32_t timebase=0)
 	}                              //if motors are not armed, blink motor leds
 #endif
 

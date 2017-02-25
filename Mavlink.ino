@@ -57,7 +57,7 @@ unsigned long send_mavlink_connection_config = 0;
  */
 void Mavlink_setup() {
   _MavLinkSerial.begin(_MavLinkSerialBaud);
-  //debugSerial.begin(debugSerialBaud);
+  
 
   pinMode(led,OUTPUT);
   //pinMode(12,OUTPUT);
@@ -156,7 +156,7 @@ void Mavlink_check_connection() {
         hb_count = 0;
 
 		digitalWrite(led, LOW);      // LED will be ON when connected to MavLink, else it will slowly blink
-		leds[1] = (0,0,0);
+		leds[1] = CRGB(0,0,0);
 		LEDS.show();
 
         #ifdef DEBUG_APM_CONNECTION1
